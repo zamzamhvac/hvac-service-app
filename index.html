@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Service Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root {
+            --background: #181A20;
+            --surface: #1F222A;
+            --primary-blue: #006BFF;
+            --primary-green: #34B369;
+            --on-surface: #FFFFFF;
+            --on-surface-variant: #9E9E9E;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Urbanist', sans-serif; }
+        body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+        .mobile-frame {
+            width: 430px; height: 932px; background: var(--background);
+            border-radius: 50px; box-shadow: 0 0 0 10px #111;
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+        
+        main { flex-grow: 1; overflow-y: auto; overflow-x: hidden; }
+        main::-webkit-scrollbar { display: none; }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Homescreen Styles */
+        .home-header { padding: 20px 25px; display: flex; justify-content: space-between; align-items: center; }
+        .welcome-text p { font-size: 16px; color: var(--on-surface-variant); }
+        .welcome-text h1 { font-size: 20px; color: var(--on-surface); }
+        .notification-btn { position: relative; font-size: 22px; color: var(--on-surface); cursor: pointer; }
+
+        .promo-card {
+            margin: 10px 25px; padding: 20px; background: var(--primary-blue); border-radius: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .promo-text h2 { font-size: 22px; color: white; }
+        .promo-text p { font-size: 14px; color: rgba(255,255,255,0.8); }
+        .promo-card img { width: 90px; height: 90px; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; padding: 25px 25px 15px; }
+        .section-header h2 { font-size: 20px; color: var(--on-surface); }
+        .section-header a { font-size: 16px; color: var(--primary-green); text-decoration: none; }
+
+        .categories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 0 25px; }
+        .category-item {
+            background: var(--surface); padding: 20px 15px; border-radius: 20px; text-align: center;
+            color: var(--on-surface); font-weight: 700; cursor: pointer;
+        }
+        .category-item.active { background: var(--primary-green); }
+        .category-item i { font-size: 24px; margin-bottom: 10px; }
+
+        /* Inner Pages */
+        .page-content { padding: 20px 25px; }
+        .page-header { display: flex; align-items: center; margin-bottom: 25px; position:relative; }
+        .back-btn { font-size: 22px; color: var(--on-surface); cursor: pointer; }
+        .page-title {
+            font-size: 22px; font-weight: 700; color: var(--on-surface);
+            position: absolute; left: 50%; transform: translateX(-50%);
+        }
+
+        .list-item {
+            background: var(--surface); padding: 15px; border-radius: 12px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 15px; cursor: pointer;
+        }
+        .list-item .icon {
+            width: 45px; height: 45px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; background: #2a2d36; color: var(--primary-green);
+        }
+        .list-item .title { font-weight: 600; font-size: 16px; color: var(--on-surface); }
+        .list-item .arrow { margin-left: auto; color: var(--on-surface-variant); transition: transform 0.3s; }
+        .list-item.open .arrow { transform: rotate(180deg); }
+
+        .error-content { max-height: 0; overflow: hidden; transition: max-height 0.4s; }
+        .error-content.open { max-height: 500px; }
+        .error-content-inner { padding: 20px 20px 20px 77px; color: var(--on-surface-variant); border-bottom: 1px solid var(--surface); }
+
+        .app-footer {
+            padding: 15px 30px 25px; background: var(--surface); border-top-left-radius: 25px; border-top-right-radius: 25px;
+            display: flex; justify-content: space-around;
+        }
+        .footer-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--on-surface-variant); cursor:pointer; }
+        .footer-item.active { color: var(--primary-green); }
+        .footer-item i { font-size: 22px; } .footer-item span { font-size: 12px; font-weight: 600; }
+
+        #admin-panel-container { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
+        #admin-modal { background:var(--surface); padding:25px; border-radius:20px; width:100%; }
+        #admin-modal input, #admin-modal select, #admin-modal textarea {
+            width:100%; padding:12px; margin-bottom:15px; border-radius:8px;
+            border:1px solid #2c3854; background-color:#181A20; color:var(--on-surface);
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-frame">
+        <main>
+            <div id="home-screen" class="screen active">
+                <header class="home-header">
+                    <div class="welcome-text"><p>Welcome,</p><h1>Technician</h1></div>
+                    <div class="notification-btn" id="admin-icon-btn"><i class="fas fa-bell"></i></div>
+                </header>
+                <div class="promo-card">
+                    <div class="promo-text"><h2>Today's Special!</h2><p>Get Discount for every service.</p></div>
+                    <img src="https://i.imgur.com/YDUfWfJ.png" alt="Repairman">
+                </div>
+                <div class="section-header"><h2>Categories</h2><a>See All</a></div>
+                <div class="categories-grid">
+                    <div class="category-item active" onclick="showScreen('error-codes-screen')"><i class="fas fa-bug"></i><div>AC Repair</div></div>
+                    <div class="category-item"><i class="fas fa-plug"></i><div>Electrician</div></div>
+                    <div class="category-item"><i class="fas fa-faucet"></i><div>Plumber</div></div>
+                </div>
+            </div>
+
+            <div id="error-codes-screen" class="screen page-content">
+                <div class="page-header"><div class="back-btn" onclick="showScreen('home-screen')"><i class="fas fa-arrow-left"></i></div><h1 class="page-title">AC Brands</h1></div>
+                <div id="brands-container"></div>
+            </div>
+
+            <div id="error-details-screen" class="screen page-content">
+                <div class="page-header"><div class="back-btn" onclick="showScreen('error-codes-screen')"><i class="fas fa-arrow-left"></i></div><h1 id="brand-title" class="page-title">Codes</h1></div>
+                <div id="error-codes-container"></div>
+            </div>
+        </main>
+        
+        <footer class="app-footer">
+            <div class="footer-item active" onclick="showScreen('home-screen')"><i class="fas fa-home"></i><span>Home</span></div>
+            <div class="footer-item"><i class="far fa-calendar-check"></i><span>Bookings</span></div>
+            <div class="footer-item"><i class="far fa-comment-dots"></i><span>Chat</span></div>
+            <div class="footer-item"><i class="far fa-user-circle"></i><span>Profile</span></div>
+        </footer>
+
+        <div id="admin-panel-container">
+            <div id="admin-modal">
+                <h2 style="color:var(--on-surface); text-align:center; margin-bottom:20px;">Admin Panel</h2>
+                <select id="brand"></select>
+                <input type="text" id="error-code" placeholder="Error Code">
+                <input type="text" id="description" placeholder="Description">
+                <textarea id="causes" placeholder="Causes (one per line)" rows="3"></textarea>
+                <textarea id="solutions" placeholder="Solutions (one per line)" rows="3"></textarea>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button id="hide-admin-btn" style="flex:1;padding:12px;border:1px solid #2c3854;background:transparent;color:var(--on-surface-variant);border-radius:12px;">Close</button>
+                    <button id="add-error-btn" style="flex:1;padding:12px;border:none;background:var(--primary-green);color:white;border-radius:12px;">Add Error</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBm-EBaqbXI6aJIPSCb6Gdk0CIcLjxDuzg", authDomain: "ac-error-codes-1ca7c.firebaseapp.com", databaseURL: "https://ac-error-codes-1ca7c-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        const ADMIN_PASSCODE = "admin123";
+        const BRANDS = { gree: { name: "Gree", icon: "fa-wind" }, haier: { name: "Haier", icon: "fa-fan" }, dawlance: { name: "Dawlance", icon: "fa-snowflake" }, orient: { name: "Orient", icon: "fa-sun" }, samsung: { name: "Samsung", icon: "fa-bolt" }, lg: { name: "LG", icon: "fa-fire" } };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const errorDataRef = database.ref('errorData');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateBrandSelect();
+            populateBrandCards();
+            setupEventListeners();
+        });
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId)?.classList.add('active');
+        }
+        
+        function populateBrandSelect() {
+            const adminSelect = document.getElementById('brand'); adminSelect.innerHTML = '';
+            for (const key in BRANDS) { const option = document.createElement('option'); option.value = key; option.textContent = BRANDS[key].name; adminSelect.appendChild(option); }
+        }
+        
+        function populateBrandCards() {
+            const container = document.getElementById('brands-container'); container.innerHTML = '';
+            for (const key in BRANDS) {
+                const item = document.createElement('div'); item.className = 'list-item'; item.onclick = () => showBrandErrors(key);
+                item.innerHTML = `<div class="icon"><i class="fas ${BRANDS[key].icon}"></i></div><span class="title">${BRANDS[key].name}</span><i class="fas fa-chevron-right arrow"></i>`;
+                container.appendChild(item);
+            }
+        }
+
+        function showBrandErrors(brandKey) {
+            showScreen('error-details-screen'); document.getElementById('brand-title').textContent = BRANDS[brandKey].name;
+            const container = document.getElementById('error-codes-container'); container.innerHTML = '';
+            errorDataRef.child(brandKey).once('value').then(snapshot => displayErrors(container, snapshot.val() || [], brandKey));
+        }
+
+        function displayErrors(container, errors, brandKey) {
+            if (!errors || errors.length === 0) { container.innerHTML = `<p style="text-align:center;color:var(--on-surface-variant);">No codes for ${BRANDS[brandKey].name}.</p>`; return; }
+            errors.forEach(error => {
+                const item = document.createElement('div'); item.className = 'error-item-container';
+                item.innerHTML = `
+                    <div class="list-item">
+                        <div class="icon"><i class="fas fa-bug"></i></div>
+                        <div><div class="title">${error.code}</div><div style="font-size:14px;color:var(--on-surface-variant);">${error.description}</div></div>
+                        <i class="fas fa-chevron-down arrow"></i>
+                    </div>
+                    <div class="error-content">
+                        <div class="error-content-inner">
+                            <b>Causes:</b><ul style="padding-left:20px;margin-bottom:10px;">${(error.causes || []).map(c => `<li>${c}</li>`).join('')}</ul>
+                            <b>Solutions:</b><ul style="padding-left:20px;">${(error.solutions || []).map(s => `<li>${s}</li>`).join('')}</ul>
+                        </div>
+                    </div>`;
+                container.appendChild(item);
+            });
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('admin-icon-btn').addEventListener('click', () => {
+                const password = prompt("Enter Admin Passcode:");
+                if (password === ADMIN_PASSCODE) document.getElementById('admin-panel-container').style.display = 'flex';
+                else if (password) alert("Incorrect Passcode!");
+            });
+            document.getElementById('hide-admin-btn').addEventListener('click', () => { document.getElementById('admin-panel-container').style.display = 'none'; });
+            document.getElementById('add-error-btn').addEventListener('click', addErrorCode);
+            document.getElementById('error-details-screen').addEventListener('click', (e) => {
+                const listItem = e.target.closest('.list-item');
+                if (!listItem || !listItem.parentElement.classList.contains('error-item-container')) return;
+                listItem.classList.toggle('open'); listItem.nextElementSibling.classList.toggle('open');
+            });
+        }
+
+        function addErrorCode() {
+            const brand = document.getElementById('brand').value;
+            const code = document.getElementById('error-code').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const causes = document.getElementById('causes').value.trim().split('\n').filter(Boolean);
+            const solutions = document.getElementById('solutions').value.trim().split('\n').filter(Boolean);
+
+            if (!code || !description || causes.length === 0 || solutions.length === 0) { alert('Please fill all fields.'); return; }
+            
+            const newError = { code, description, causes, solutions };
+            const brandRef = errorDataRef.child(brand);
+            brandRef.once('value').then(snapshot => {
+                const updatedErrors = [...(snapshot.val() || []), newError];
+                brandRef.set(updatedErrors).then(() => {
+                    alert('Error code added!'); document.getElementById('admin-panel-container').style.display = 'none';
+                    if (document.getElementById('error-details-screen').classList.contains('active')) { showBrandErrors(brand); }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
